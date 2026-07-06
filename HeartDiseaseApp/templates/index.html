@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Heart Disease Risk Assessment Agent</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="background-glow glow-one"></div>
+    <div class="background-glow glow-two"></div>
+
+    <main class="app-shell">
+        <section class="hero-card">
+            <div class="hero-content">
+                <div class="badge">❤️ AI Medical Assessment</div>
+                <h1>Heart Disease Risk Assessment Agent</h1>
+                <p>Enter the patient information below to receive a quick heart-disease risk analysis powered by a trained machine-learning model.</p>
+            </div>
+        </section>
+
+        <section class="form-card">
+            {% if model_error %}
+            <div class="alert error">{{ model_error }}</div>
+            {% endif %}
+
+            <form id="assessment-form" method="post">
+                <div class="grid">
+                    {% for field in fields %}
+                    <div class="field-group">
+                        <label for="{{ field.name }}">{{ field.label }}</label>
+                        {% if field.input_type == 'select' %}
+                        <select id="{{ field.name }}" name="{{ field.name }}" required>
+                            {% for option_value, option_label in field.options %}
+                            <option value="{{ option_value }}" {% if defaults[field.name] == option_value %}selected{% endif %}>{{ option_label }}</option>
+                            {% endfor %}
+                        </select>
+                        {% else %}
+                        <input
+                            id="{{ field.name }}"
+                            name="{{ field.name }}"
+                            type="number"
+                            min="{{ field.min }}"
+                            max="{{ field.max }}"
+                            step="{{ field.step }}"
+                            value="{{ defaults[field.name] }}"
+                            required
+                        >
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="actions">
+                    <button type="submit" class="btn btn-primary">Assess Risk</button>
+                    <button type="reset" class="btn btn-secondary" id="reset-btn">Reset</button>
+                </div>
+            </form>
+        </section>
+
+        {% if result or error_message %}
+        <section class="result-card {% if result and result.prediction_code == 1 %}danger{% else %}safe{% endif %}" id="result-card">
+            {% if error_message %}
+            <div class="alert error">{{ error_message }}</div>
+            {% else %}
+            <div class="result-header">
+                <div>
+                    <p class="result-label">Prediction Result</p>
+                    <h2>{{ result.prediction }}</h2>
+                </div>
+                <div class="result-icon">{% if result.prediction_code == 1 %}⚠️{% else %}✅{% endif %}</div>
+            </div>
+
+            <div class="result-metrics">
+                <div>
+                    <span>Risk Level</span>
+                    <strong>{{ result.risk_level }}</strong>
+                </div>
+                <div>
+                    <span>Confidence</span>
+                    <strong>{% if result.confidence is not none %}{{ (result.confidence * 100) | round(1) }}%{% else %}N/A{% endif %}</strong>
+                </div>
+            </div>
+
+            <p class="advice">{{ result.recommendation }}</p>
+            {% endif %}
+        </section>
+        {% endif %}
+    </main>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
