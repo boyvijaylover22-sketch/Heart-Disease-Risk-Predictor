@@ -1,9 +1,7 @@
 import math
-import os
 from pathlib import Path
 
 import joblib
-import pandas as pd
 import streamlit as st
 
 st.set_page_config(
@@ -152,7 +150,7 @@ if submitted:
         probability = score_with_rule_based_model(values)
         risk_label = "High risk" if probability >= 0.5 else "Lower risk"
     else:
-        row = pd.DataFrame([[age, sex, cp, trestbps, chol, fbs, restecg, thalach, exang, oldpeak, slope, ca, thal]], columns=feature_names)
+        row = [[age, sex, cp, trestbps, chol, fbs, restecg, thalach, exang, oldpeak, slope, ca, thal]]
         probability = model.predict_proba(row)[0][1]
         risk_label = "High risk" if probability >= 0.5 else "Lower risk"
 
