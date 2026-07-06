@@ -1,4 +1,7 @@
+import math
 import os
+from pathlib import Path
+
 import joblib
 import pandas as pd
 import streamlit as st
@@ -9,15 +12,54 @@ st.set_page_config(
     layout="wide",
 )
 
-MODEL_PATH = "heart_disease_model.pkl"
+MODEL_PATH = Path(__file__).resolve().parent / "heart_disease_model.pkl"
 
-if not os.path.exists(MODEL_PATH):
-    st.error("Model file not found. Train it first by running the training script.")
-    st.stop()
 
-bundle = joblib.load(MODEL_PATH)
-model = bundle["model"]
-feature_names = bundle["features"]
+def load_model_bundle():
+    if not MODEL_PATH.exists():
+        st.error("Model file not found. The app cannot run without heart_disease_model.pkl.")
+        st.stop()
+
+    try:
+        return joblib.load(MODEL_PATH)
+    except Exception as exc:
+        st.error(f"Failed to load the model: {exc}")
+        st.stop()
+
+
+bundle = load_model_bundle()
+model_type = bundle.get("model_type", "sklearn") if isinstance(bundle, dict) else "sklearn"
+feature_names = bundle.get("features") if isinstance(bundle, dict) else None
+model = bundle.get("model") if isinstance(bundle, dict) else None
+
+if feature_names is None:
+    feature_names = [
+        "age",
+        "sex",
+        "cp",
+        "trestbps",
+        "chol",
+        "fbs",
+        "restecg",
+        "thalach",
+        "exang",
+        "oldpeak",
+        "slope",
+        "ca",
+        "thal",
+    ]
+
+
+def score_with_rule_based_model(values):
+    weights = bundle.get("weights", {}) if isinstance(bundle, dict) else {}
+    intercept = float(bundle.get("intercept", -5.0)) if isinstance(bundle, dict) else -5.0
+    score = intercept
+    for feature_name in feature_names:
+        if feature_name in weights:
+            score += float(weights[feature_name]) * float(values.get(feature_name, 0))
+    probability = 1 / (1 + math.exp(-score))
+    return probability
+
 
 st.title("❤️ Heart Disease Risk Predictor")
 st.write("Enter the clinical values below to estimate the likelihood of heart disease.")
@@ -90,12 +132,29 @@ with st.form("risk_form"):
     submitted = st.form_submit_button("Predict Risk")
 
 if submitted:
-    row = pd.DataFrame(
-        [[age, sex, cp, trestbps, chol, fbs, restecg, thalach, exang, oldpeak, slope, ca, thal]],
-        columns=feature_names,
-    )
-    probability = model.predict_proba(row)[0][1]
-    risk_label = "High risk" if probability >= 0.5 else "Lower risk"
+    values = {
+        "age": age,
+        "sex": sex,
+        "cp": cp,
+        "trestbps": trestbps,
+        "chol": chol,
+        "fbs": fbs,
+        "restecg": restecg,
+        "thalach": thalach,
+        "exang": exang,
+        "oldpeak": oldpeak,
+        "slope": slope,
+        "ca": ca,
+        "thal": thal,
+    }
+
+    if model_type == "rule_based":
+        probability = score_with_rule_based_model(values)
+        risk_label = "High risk" if probability >= 0.5 else "Lower risk"
+    else:
+        row = pd.DataFrame([[age, sex, cp, trestbps, chol, fbs, restecg, thalach, exang, oldpeak, slope, ca, thal]], columns=feature_names)
+        probability = model.predict_proba(row)[0][1]
+        risk_label = "High risk" if probability >= 0.5 else "Lower risk"
 
     st.subheader("Prediction")
     st.metric("Risk Probability", f"{probability * 100:.1f}%")
